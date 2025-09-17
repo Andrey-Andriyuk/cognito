@@ -10,8 +10,6 @@ plugins {
 
 // apply JaCoCo configuration
 apply from: "${rootDir}/jacoco.gradle"
-// apply Spotless configuration
-apply from: "${rootDir}/spotless.gradle"
 
 allprojects {
   // common repositories for project dependencies

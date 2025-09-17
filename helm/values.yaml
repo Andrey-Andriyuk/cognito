@@ -35,6 +35,6 @@ config:
       name: vega-alts-common
 apps:
   app:
-    port: 8080
+    port: 8443
     memory:
       limit: 6Gi
