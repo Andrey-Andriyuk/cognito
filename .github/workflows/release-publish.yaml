@@ -1,0 +1,26 @@
+name: "Release: Publish Artifacts"
+
+concurrency:
+  group: release-publish-${{ github.ref_name }}
+  cancel-in-progress: false
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+
+  resolve_versions:
+    uses: vegainvestments/gha-workflows/.github/workflows/reusable-version-resolve-by-tag.yaml@v3.0.0
+
+  publish:
+    needs: [resolve_versions]
+    uses: ./.github/workflows/reusable-publish.yaml
+    with:
+      semver_version: "${{ needs.resolve_versions.outputs.semver_version }}"
+      jar_version: "${{ needs.resolve_versions.outputs.jar_version }}"
+      image_tag: "${{ needs.resolve_versions.outputs.image_tag }}"

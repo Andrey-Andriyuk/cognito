@@ -1,0 +1,26 @@
+name: "CI: Helm Test"
+
+concurrency:
+  group: ci-helm-test-${{ github.event.pull_request.id }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+permissions:
+  contents: read
+
+jobs:
+
+  lint_helm_chart:
+    uses: vegainvestments/gha-workflows/.github/workflows/reusable-helm-lint.yaml@v3.0.0
+    with:
+      helm_chart_dir: "./helm"
+      lint_args: --set image.repository=your-repository --set image.tag=your-tag
+
+  test_helm_chart:
+    uses: vegainvestments/gha-workflows/.github/workflows/reusable-helm-template.yaml@v3.0.0
+    with:
+      helm_chart_dir: "./helm"
+      template_args: --set image.repository=your-repository --set image.tag=your-tag

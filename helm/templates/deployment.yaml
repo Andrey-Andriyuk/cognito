@@ -1,0 +1,10 @@
+{{- $root := $ -}}
+{{- $imageDefaults := dict "image" (dict "tag" $root.Values.image.tag "repository" $root.Values.image.repository) -}}
+
+{{- range $serviceName, $serviceDetails := $root.Values.apps }}
+  {{- $appsDefaults := include "common.fun.maps.deepMerge" (list $root.Values.config.appsDefaults $imageDefaults) | fromYaml }}
+  {{- $details := include "common.fun.maps.deepMerge" (list $appsDefaults $serviceDetails) | fromYaml }}
+
+  {{ include "javaapp.full" (dict "root" $root "serviceName" $serviceName "details" $details ) }}
+
+{{- end }}

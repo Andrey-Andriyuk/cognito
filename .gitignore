@@ -1,0 +1,66 @@
+# -------------------------
+# OS / Editor cruft
+# -------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# -------------------------
+# Logs / temp
+# -------------------------
+*.log
+*.tmp
+tmp/
+
+# -------------------------
+# Environment files (e.g. Docker Compose)
+# -------------------------
+.env
+.env.*
+!.env.example
+
+# -------------------------
+# Node / npm (for hooks/tools)
+# -------------------------
+**/node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npmrc
+
+# -------------------------
+# Gradle / Java build output
+# -------------------------
+.gradle/
+**/build/
+# Keep the Gradle Wrapper JAR in VCS
+!gradle/wrapper/gradle-wrapper.jar
+
+# -------------------------
+# IDEs
+# -------------------------
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Eclipse / STS
+.apt_generated
+.apt_generated_tests
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+bin/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/

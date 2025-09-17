@@ -1,0 +1,47 @@
+dependencies {
+  testImplementation "org.apache.avro:avro:${avroVersion}"
+}
+
+buildscript {
+  repositories {
+    mavenLocal()
+    mavenCentral()
+  }
+  dependencies {
+    classpath "org.apache.avro:avro-tools:${avroVersion}"
+  }
+}
+
+def testAvroSchemasDir = 'src/test/avro'
+def testAvroCodeGenerationDir = 'build/test-generated-avro'
+def testAvroDontUseString = project.hasProperty('testAvroDontUseString') && testAvroDontUseString
+
+sourceSets.test.java.srcDirs += [testAvroCodeGenerationDir]
+
+tasks.register('testGenerateAvroClasses') {
+  inputs.dir(testAvroSchemasDir)
+  outputs.dir(testAvroCodeGenerationDir)
+  logging.captureStandardOutput(LogLevel.INFO);
+  logging.captureStandardError(LogLevel.ERROR)
+  doLast {
+    def args = [
+      '-encoding',
+      'UTF-8',
+      '-fieldVisibility',
+      'private',
+      '-noSetters',
+      'schema',
+      "$projectDir/$testAvroSchemasDir".toString(),
+      "$projectDir/$testAvroCodeGenerationDir".toString()
+    ]
+    if (!testAvroDontUseString) {
+      args.push('-string')
+    }
+    logger.info("Running ${org.apache.avro.tool.SpecificCompilerTool} using args {}", args)
+    new org.apache.avro.tool.SpecificCompilerTool().run(System.in, System.out, System.err, args)
+  }
+}
+
+tasks.named("compileTestJava") {
+  dependsOn testGenerateAvroClasses
+}

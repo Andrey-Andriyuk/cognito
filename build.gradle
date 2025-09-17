@@ -1,0 +1,56 @@
+plugins {
+  id 'org.springframework.boot' version "${springBootVersion}" apply false
+  id 'dev.monosoul.jooq-docker' version "${jooqDockerPluginVersion}" apply false
+
+  id 'jacoco'
+  id 'jacoco-report-aggregation'
+  id 'com.diffplug.spotless' version "${spotlessVersion}"
+}
+
+
+// apply JaCoCo configuration
+apply from: "${rootDir}/jacoco.gradle"
+// apply Spotless configuration
+apply from: "${rootDir}/spotless.gradle"
+
+allprojects {
+  // common repositories for project dependencies
+  repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+      url "${codeArtifactRepositoryUrl}"
+      credentials {
+        username "${codeArtifactRepositoryUsername}"
+        password "${codeArtifactRepositoryToken}"
+      }
+    }
+  }
+}
+
+subprojects {
+  pluginManager.withPlugin('java') {
+    pluginManager.apply('maven-publish')
+
+    publishing {
+      publications {
+        mavenJava(MavenPublication) {
+          from components.java
+        }
+      }
+      repositories {
+        maven {
+          url "${codeArtifactRepositoryUrl}"
+          credentials {
+            username "${codeArtifactRepositoryUsername}"
+            password "${codeArtifactRepositoryToken}"
+          }
+        }
+      }
+    }
+  }
+}
+
+wrapper {
+  gradleVersion = '8.12.1'
+}

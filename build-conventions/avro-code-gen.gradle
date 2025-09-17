@@ -1,0 +1,54 @@
+import org.apache.avro.tool.SpecificCompilerTool
+
+dependencies {
+  implementation "org.apache.avro:avro:${avroVersion}"
+}
+
+buildscript {
+  repositories {
+    mavenLocal()
+    mavenCentral()
+  }
+  dependencies {
+    classpath "org.apache.avro:avro-tools:${avroVersion}"
+  }
+}
+
+def avroSchemasDir = 'src/main/avro'
+def avroCodeGenerationDir = 'build/generated-avro'
+def avroDontUseString = project.hasProperty('avroDontUseString') && avroDontUseString
+
+sourceSets.main.java.srcDirs += [avroCodeGenerationDir]
+
+tasks.register('generateAvroClasses') {
+  inputs.dir(avroSchemasDir)
+  outputs.dir(avroCodeGenerationDir)
+  logging.captureStandardOutput(LogLevel.INFO);
+  logging.captureStandardError(LogLevel.ERROR)
+  doLast {
+    def args = [
+      '-encoding',
+      'UTF-8',
+      '-fieldVisibility',
+      'private',
+      '-noSetters',
+      'schema',
+      "$projectDir/$avroSchemasDir".toString(),
+      "$projectDir/$avroCodeGenerationDir".toString()
+    ]
+    if (!avroDontUseString) {
+      args.push('-string')
+    }
+    logger.info("Running ${SpecificCompilerTool} using args {}", args)
+    new SpecificCompilerTool().run(System.in, System.out, System.err, args)
+  }
+}
+
+tasks.named('sourcesJar') {
+  dependsOn tasks.generateAvroClasses
+}
+
+tasks.withType(JavaCompile).configureEach {
+  dependsOn generateAvroClasses
+}
+

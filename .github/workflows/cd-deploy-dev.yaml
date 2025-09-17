@@ -1,0 +1,35 @@
+name: "CD: Deploy `dev` Environment"
+
+concurrency:
+  group: cd-deploy-dev
+  cancel-in-progress: false
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+
+  resolve_versions:
+    uses: vegainvestments/gha-workflows/.github/workflows/reusable-version-resolve-by-commit.yaml@v3.0.0
+
+  publish:
+    needs: [resolve_versions]
+    uses: ./.github/workflows/reusable-publish.yaml
+    with:
+      semver_version: ${{ needs.resolve_versions.outputs.semver_version }}
+      jar_version: ${{ needs.resolve_versions.outputs.jar_version }}
+      image_tag: ${{ needs.resolve_versions.outputs.image_tag }}
+
+  deploy:
+    needs: [resolve_versions, publish]
+    uses: ./.github/workflows/reusable-deploy.yaml
+    with:
+      version: "${{ needs.resolve_versions.outputs.semver_version }}"
+      env: dev
+      dry_run: false

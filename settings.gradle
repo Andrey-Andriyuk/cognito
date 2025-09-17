@@ -1,0 +1,119 @@
+rootProject.name = 'helloworld'
+
+
+
+
+
+
+
+include ':helloworld-app'
+
+
+
+
+
+
+
+
+def runAws(def project, def text, def command) {
+  try {
+    def stdout = new ByteArrayOutputStream()
+    if (System.getProperty('os.name').toLowerCase().contains('win')) {
+      project.exec {
+        commandLine command
+        standardOutput = stdout
+      }
+    } else {
+      project.exec {
+        commandLine 'sh', '-c', command.join(' ')
+        standardOutput = stdout
+      }
+    }
+    println "Successfully retrieved ${text}"
+    return stdout.toString().trim()
+  } catch (Exception e) {
+    throw new GradleException("Failed to resolve ${text}: ${e.message}")
+  }
+}
+
+gradle.beforeProject { project ->
+
+  if (!project.hasProperty('codeArtifactRepositoryUrl')) {
+    def url = System.getenv('CODEARTIFACT_URL')
+    if (url) {
+      project.ext.codeArtifactRepositoryUrl = url
+      println "Using CodeArtifact url from environment variable CODEARTIFACT_URL"
+    } else {
+      println "Environment variable CODEARTIFACT_URL not set. Trying to fetch from AWS CLI..."
+      project.ext.codeArtifactRepositoryUrl = runAws(
+          project,
+          'CodeArtifact URL from AWS CLI',
+          [
+            'aws',
+            'codeartifact',
+            'get-repository-endpoint',
+            '--domain',
+            'vega-artifacts',
+            '--domain-owner',
+            '099100561859',
+            '--format',
+            'maven',
+            '--repository',
+            'vega-maven-store',
+            '--region',
+            'eu-central-1',
+            '--query',
+            'repositoryEndpoint',
+            '--output',
+            'text'
+          ]
+          )
+    }
+  } else {
+    project.ext.codeArtifactRepositoryUrl = project.getProperty('codeArtifactRepositoryUrl')
+  }
+
+  if (!project.hasProperty('codeArtifactRepositoryUsername')) {
+    def url = System.getenv('CODEARTIFACT_AUTH_USER')
+    if (url) {
+      project.ext.codeArtifactRepositoryUsername = url
+      println "Using CodeArtifact username from environment variable CODEARTIFACT_AUTH_USER"
+    } else {
+      println "Environment variable CODEARTIFACT_AUTH_USER not set. Using default 'aws'"
+      project.ext.codeArtifactRepositoryUsername = 'aws'
+    }
+  } else {
+    project.ext.codeArtifactRepositoryUsername = project.getProperty('codeArtifactRepositoryUsername')
+  }
+
+  if (!project.hasProperty('codeArtifactRepositoryToken')) {
+    def envToken = System.getenv('CODEARTIFACT_AUTH_TOKEN')
+    if (envToken) {
+      project.ext.codeArtifactRepositoryToken = envToken
+      println "Using CodeArtifact token from environment variable CODEARTIFACT_AUTH_TOKEN"
+    } else {
+      println "Environment variable CODEARTIFACT_AUTH_TOKEN not set. Trying to fetch from AWS CLI..."
+      project.ext.codeArtifactRepositoryToken = runAws(
+          project,
+          'CodeArtifact token from AWS CLI',
+          [
+            'aws',
+            'codeartifact',
+            'get-authorization-token',
+            '--domain',
+            'vega-artifacts',
+            '--domain-owner',
+            '099100561859',
+            '--region',
+            'eu-central-1',
+            '--query',
+            'authorizationToken',
+            '--output',
+            'text'
+          ]
+          )
+    }
+  } else {
+    project.ext.codeArtifactRepositoryToken = project.getProperty('codeArtifactRepositoryToken')
+  }
+}

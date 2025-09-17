@@ -1,0 +1,48 @@
+name: "Reusable: Deploy Application"
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        description: "Version to deploy"
+        required: true
+      env:
+        type: string
+        description: "Environment name (dev/test/uat/prod)"
+        required: true
+      dry_run:
+        type: boolean
+        description: "Runs helm upgrade in dry-run mode"
+        default: false
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: warp-custom-vega-ci-small
+    environment: ${{ inputs.env }}
+    outputs:
+      target_deployer_sts_role: ${{ steps.collect.outputs.DEPLOYER_STS_ROLE }}
+      target_aws_region: ${{ steps.collect.outputs.AWS_REGION }}
+      target_eks_cluster_name: ${{ steps.collect.outputs.EKS_CLUSTER }}
+    steps:
+      - name: Collect `${{ inputs.env }}` deployment parameters
+        id: collect
+        run: |
+          set -euo pipefail
+          {
+            echo "DEPLOYER_STS_ROLE=${{ vars.DEPLOYER_STS_ROLE }}"
+            echo "AWS_REGION=${{ vars.AWS_REGION }}"
+            echo "EKS_CLUSTER=${{ vars.EKS_CLUSTER }}"
+          } >> "$GITHUB_OUTPUT"
+  deploy:
+    needs: prepare
+    uses: vegainvestments/gha-workflows/.github/workflows/reusable-deploy-helm-release.yaml@v3.2.0
+    with:
+      helm_chart_version: ${{ inputs.version }}
+      helm_chart_name: "helloworld"
+      helm_release_name: "helloworld"
+      helm_dry_run: ${{ inputs.dry_run }}
+      target_deployer_sts_role: ${{ needs.prepare.outputs.target_deployer_sts_role }}
+      target_aws_region: ${{ needs.prepare.outputs.target_aws_region }}
+      target_eks_cluster_name: ${{ needs.prepare.outputs.target_eks_cluster_name }}
+      env: ${{ inputs.env }}

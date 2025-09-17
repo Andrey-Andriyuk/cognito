@@ -1,0 +1,17 @@
+name: "Release: Create"
+
+concurrency:
+  group: release-create
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  create_semantic_release:
+    uses: vegainvestments/gha-workflows/.github/workflows/reusable-sr-create.yaml@v3.0.0
+    permissions:
+      contents: write
+    secrets:
+      personal_access_token: ${{ secrets.GH_TOKEN }}

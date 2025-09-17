@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+set -eu
+
+BIN=".githooks/node_modules/.bin/commitlint"
+CONFIG=".githooks/commitlint.config.js"
+
+if [ ! -x "$BIN" ]; then
+  echo "commitlint not found in $BIN"
+  echo "Run: make bootstrap"
+  exit 1
+fi
+
+exec "$BIN" --config "$CONFIG" --edit "$1"

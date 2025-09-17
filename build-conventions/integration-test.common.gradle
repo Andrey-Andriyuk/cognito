@@ -1,0 +1,115 @@
+// Common configuration for integration tests across all microservices
+// This ensures consistent test reporting and GitHub integration using the modern testing.suites approach
+
+testing {
+  suites {
+    integrationTest(JvmTestSuite) {
+      dependencies {
+        implementation project()
+        implementation sourceSets.test.output
+
+        // Common integration test dependencies
+        implementation "investments.vega.common:integration-test-helper:${intTestsSupportJavaCommonVersion}"
+        implementation "investments.vega.common:common-test-utils:${intTestsSupportJavaCommonVersion}"
+        implementation "org.junit.vintage:junit-vintage-engine"
+        implementation "io.cucumber:cucumber-spring"
+        implementation "io.rest-assured:rest-assured"
+        implementation "io.cucumber:cucumber-junit"
+        implementation "io.cucumber:cucumber-java"
+        implementation "org.springframework.security:spring-security-oauth2-jose"
+        implementation "org.springframework.boot:spring-boot-starter-security"
+        implementation "org.springframework.boot:spring-boot-starter-web"
+        implementation "org.springframework.security:spring-security-test"
+        implementation "io.jsonwebtoken:jjwt-api"
+        implementation "io.jsonwebtoken:jjwt-impl"
+        implementation "io.jsonwebtoken:jjwt-jackson"
+        implementation "org.apache.commons:commons-csv:${apacheCommonsCsvVersion}"
+        implementation "org.jobrunr:jobrunr:${jobRunrVersion}"
+        implementation "org.testcontainers:testcontainers:${testcontainersVersion}"
+        implementation "org.testcontainers:junit-jupiter:${testcontainersVersion}"
+        implementation "org.testcontainers:postgresql:${testcontainersVersion}"
+
+        compileOnly "org.projectlombok:lombok"
+        annotationProcessor "org.projectlombok:lombok"
+      }
+
+      targets {
+        all {
+          testTask.configure {
+            enabled = true
+            description = 'Runs the Cucumber integration tests.'
+            group = 'verification'
+            testClassesDirs = sourceSets.integrationTest.output.classesDirs
+            classpath = sourceSets.integrationTest.runtimeClasspath
+
+            // Ensure JUnit XML reports are generated for GitHub integration
+            reports {
+              junitXml.required = true
+              html.required = true
+            }
+
+            // Configure test logging for better visibility
+            testLogging {
+              events 'started', 'passed', 'skipped', 'failed'
+              exceptionFormat 'full'
+              showStandardStreams = true
+            }
+
+            // Cucumber-specific system properties
+            systemProperty "cucumber.filter.tags", System.getProperty("cucumber.filter.tags")
+            systemProperty "cucumber.publish.quiet", "true"
+            systemProperty "cucumber.features", "src/integrationTest/resources/features"
+            systemProperty "cucumber.glue", "investments.vega"
+            systemProperty "cucumber.plugin", "json:build/reports/cucumber/cucumber-report.json"
+            
+            jvmArgs += '-Duser.timezone=UTC'
+
+            // Enable JaCoCo coverage for integration tests
+            finalizedBy jacocoIntegrationTestReport
+
+            if (project.hasProperty("enableIntegrationTestDebug") && project.property("enableIntegrationTestDebug") == "true") {
+                jvmArgs += '-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005'
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+configurations {
+  integrationTestImplementation.extendsFrom testImplementation
+  integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+  integrationTestCompileOnly.extendsFrom compileOnly
+  integrationTestAnnotationProcessor.extendsFrom annotationProcessor
+}
+
+tasks.processIntegrationTestResources {
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// Create JaCoCo integration test report
+tasks.register('jacocoIntegrationTestReport', JacocoReport) {
+  group = 'verification'
+  description = 'Generates JaCoCo coverage report for integration tests.'
+  
+  dependsOn integrationTest
+  
+  executionData.setFrom file("${buildDir}/jacoco/integrationTest.exec")
+  
+  sourceDirectories.setFrom sourceSets.main.allSource.srcDirs
+  classDirectories.setFrom sourceSets.main.output.classesDirs
+  
+  reports {
+    xml.required.set(true)
+    csv.required.set(true)
+    html.required.set(true)
+  }
+  
+  // Apply the same exclusions as unit tests
+  classDirectories.setFrom(
+    files(classDirectories.files.collect { dir ->
+      fileTree(dir: dir, exclude: rootProject.ext.jacocoExcludedPatterns)
+    })
+  )
+} 

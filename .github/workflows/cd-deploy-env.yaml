@@ -1,0 +1,50 @@
+name: "CD: Deploy Environment"
+
+concurrency:
+  group: cd-deploy-${{ inputs.env }}
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy'
+        required: true
+      env:
+        description: 'Environment name'
+        required: true
+        type: choice
+        options:
+          - dev
+          - test
+          - uat
+          - prod
+      dry_run:
+        description: 'Runs helm upgrade in dry-run mode'
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+
+  check_permissions:
+    name: Check permissions
+    runs-on: warp-custom-vega-ci-small
+    steps:
+      - name: Require `Release Managers` membership for `uat` or `prod`
+        if: ${{ contains(fromJson('["uat","prod"]'), inputs.env) }}
+        uses: vegainvestments/gha-workflows/github-require-membership@v3.3.0
+        with:
+          username: ${{ github.actor }}
+          team-slug: "Release Managers"
+          fail-fast: "true"
+          personal-access-token: ${{ secrets.GH_TOKEN }}
+
+  deploy:
+    needs: [check_permissions]
+    uses: ./.github/workflows/reusable-deploy.yaml
+    with:
+      version: ${{ inputs.version }}
+      env: ${{ inputs.env }}
+      dry_run: ${{ inputs.dry_run }}

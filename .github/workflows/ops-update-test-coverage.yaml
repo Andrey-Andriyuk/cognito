@@ -1,0 +1,36 @@
+name: "Ops: Update Test Coverage"
+
+concurrency:
+  group: ops-update-test-coverage-${{ github.sha }}
+  cancel-in-progress: false
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+
+  update_test_coverage:
+    runs-on: warp-custom-vega-ci-medium
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+
+    - name: Gradle Build, Tests & Coverage Report
+      uses: vegainvestments/gha-workflows/gradle-run-basic@v3.1.1
+      with:
+        gradle-task: "build jacocoTestReportAggregate"
+        aws-sts-role: ${{ vars.MGMT_ROLE_TO_ASSUME }}
+        aws-region: ${{ vars.MGMT_REGION }}
+
+    - name: Attach Coverage Report
+      uses: vegainvestments/gha-workflows/git-commit-metadata-attach@v3.1.1
+      with:
+        metadata-ref-name: test-coverage-report
+        input-file-path: ./build/reports/jacoco/jacocoTestReportAggregate/jacocoTestReportAggregate.xml

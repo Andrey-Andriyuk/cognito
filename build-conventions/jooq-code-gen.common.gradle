@@ -1,0 +1,96 @@
+import org.jooq.meta.jaxb.ForcedType
+
+def jooqCodeGenJavaPackageNameLocal = project.findProperty('jooqCodeGenJavaPackageName')
+if (!jooqCodeGenJavaPackageNameLocal) {
+    throw new GradleException("Missing required property: jooqCodeGenJavaPackageName")
+}
+
+def jooqCodeGenDbSchemaNameLocal = project.findProperty('jooqCodeGenDbSchemaName')
+if (!jooqCodeGenDbSchemaNameLocal) {
+    throw new GradleException("Missing required property: jooqCodeGenDbSchemaName")
+}
+
+def jooqCodeGenFlywayLocationPathLocal = project.findProperty('jooqCodeGenFlywayLocationPath')
+if (!jooqCodeGenFlywayLocationPathLocal) {
+    throw new GradleException("Missing required property: jooqCodeGenFlywayLocationPath")
+}
+
+def jooqCodeGenUseInstantLocal = project.findProperty('jooqCodeGenUseInstant')
+
+
+
+
+apply plugin: 'dev.monosoul.jooq-docker'
+
+buildscript {
+  repositories {
+    mavenLocal()
+    mavenCentral()
+  }
+  dependencies {
+    classpath "org.jooq:jooq-meta:${jooqVersion}"
+  }
+}
+
+dependencies {
+  jooqCodegen("org.postgresql:postgresql")
+  jooqCodegen("org.flywaydb:flyway-database-postgresql")
+  jooqCodegen "investments.vega.common:jooq-model:${jooqCodeGenJavaCommonVersion}"
+}
+
+tasks {
+  generateJooqClasses {
+    basePackageName.set(jooqCodeGenJavaPackageName)
+    setFromFilesystem(migrationLocations, jooqCodeGenFlywayLocationPathLocal)
+    schemas.set([jooqCodeGenDbSchemaNameLocal])
+
+    usingJavaConfig {
+      name = 'investments.vega.utils.jooq.codegen.VegaJooqJavaGenerator'
+      strategy.name = 'investments.vega.utils.jooq.codegen.SingularNamingStrategy'
+      database.setExcludes('search_vector')
+      database.setIncludeExcludeColumns(true)
+
+      def forcedTypes = [
+        new ForcedType()
+          .withConverter("investments.vega.utils.jooq.codegen.SensitiveStringConverter")
+          .withTypes("sensitive_string")
+          .withUserType("investments.vega.common.sensitive.Sensitive<String>"),
+        new ForcedType()
+          .withConverter("investments.vega.utils.jooq.codegen.SensitiveJsonbConverter")
+          .withTypes("sensitive_jsonb")
+          .withUserType("investments.vega.common.sensitive.Sensitive<org.jooq.JSONB>"),
+        new ForcedType()
+          .withName("VARCHAR")
+          .withExpression("content_tsv")
+          .withBinding("investments.vega.utils.jooq.codegen.TsvectorBinding")
+      ]
+
+      if (jooqCodeGenUseInstantLocal) {
+        forcedTypes += new ForcedType()
+          .withName("INSTANT")
+          .withUserType("java.time.Instant")
+          .withIncludeTypes("timestamp")
+      }
+
+      database.setForcedTypes(forcedTypes)
+      generate.setDeprecated(true)
+      generate.setRecords(true)
+      generate.setImmutablePojos(true)
+      generate.setFluentSetters(true)
+      generate.setGlobalCatalogReferences(false)
+      generate.setRoutines(false)
+    }
+  }
+}
+
+jooq {
+  withContainer {
+    image {
+      name = "postgres:15"
+    }
+  }
+}
+
+tasks.withType(JavaCompile).configureEach {
+  dependsOn generateJooqClasses
+}

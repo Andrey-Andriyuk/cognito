@@ -1,0 +1,40 @@
+config:
+  appsDefaults:
+    serviceNamespace: default
+    podServiceAccountName: vega-java-backend
+    replicas: 1
+    probes:
+      startup:
+        enabled: true
+        path: /health
+      readiness:
+        enabled: true
+        path: /health
+    memory:
+      limit: 4Gi
+      request: 2Gi
+    cpu:
+      limit: 1.5
+      request: 0.5
+    ephemeral:
+      limit: 2Gi
+      request: 1Gi
+    deployment:
+      envVars:
+        VEGA_API_LATENCY_LOG_LEVEL: INFO
+      javaOpts: >-
+        -XX:MaxRAMPercentage=80 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+AlwaysPreTouch -XX:+FlightRecorder -XX:StartFlightRecording=filename=/tmp/recording.jfr,maxsize=1GB,maxage=60m,settings=profile -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.rmi.port=9999 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false -Djava.rmi.server.hostname=127.0.0.1
+      javaDebugOpt: >-
+        -agentlib:jdwp=transport=dt_socket,address=127.0.0.1:5000,server=y,suspend=n
+    telemetry:
+      enabled: true
+      otel_collector_address: http://grafana-k8s-monitoring-alloy-receiver.default.svc.cluster.local:4318
+      otel_protocol: http/protobuf
+    extConfigMap:
+      enabled: true
+      name: vega-alts-common
+apps:
+  app:
+    port: 8080
+    memory:
+      limit: 6Gi

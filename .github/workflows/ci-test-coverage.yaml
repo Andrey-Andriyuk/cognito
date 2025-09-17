@@ -1,0 +1,78 @@
+name: "CI: Test Coverage"
+
+concurrency:
+  group: ci-test-coverage-${{ github.event.pull_request.id }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  test_coverage:
+    runs-on: warp-custom-vega-ci-medium
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Gradle Build, Tests & Coverage Report
+        uses: vegainvestments/gha-workflows/gradle-run-basic@v3.1.1
+        with:
+          gradle-task: "build jacocoTestReportAggregate"
+          aws-sts-role: ${{ vars.MGMT_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.MGMT_REGION }}
+
+      - name: Extract Current Coverage
+        id: coverage_current
+        uses: vegainvestments/gha-workflows/jacoco-extract-summary@v3.2.1
+        with:
+          report-path: ./build/reports/jacoco/jacocoTestReportAggregate/jacocoTestReportAggregate.xml
+
+      - name: Resolve Merge Base
+        id: resolve_merge_base
+        uses: vegainvestments/gha-workflows/git-merge-base@v3.1.1
+        with:
+          ref1: ${{ github.event.pull_request.head.sha }}
+          ref2: ${{ github.event.pull_request.base.sha }}
+          ref1-name: ${{ github.event.pull_request.head.ref }}
+          ref2-name: ${{ github.event.pull_request.base.ref }}
+
+      - name: Retrieve Base Coverage Report
+        uses: vegainvestments/gha-workflows/git-commit-metadata-retrieve@v3.1.1
+        with:
+          metadata-ref-name: test-coverage-report
+          git-ref: ${{ steps.resolve_merge_base.outputs.merge-base }}
+          output-file-path: ./build/base-coverage.xml
+
+      - name: Extract Base Coverage
+        id: coverage_base
+        uses: vegainvestments/gha-workflows/jacoco-extract-summary@v3.2.1
+        with:
+          report-path: ./build/base-coverage.xml
+
+      - name: Enforce Test Coverage
+        uses: vegainvestments/gha-workflows/ci-test-coverage-gate@v3.1.1
+        with:
+          coverage-drop-threshold: "2.0"
+          base-coverage: ${{ steps.coverage_base.outputs.line-coverage }}
+          current-coverage: ${{ steps.coverage_current.outputs.line-coverage }}
+
+  integration_test:
+    runs-on: warp-custom-vega-ci-medium
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Gradle Integration Tests
+        uses: vegainvestments/gha-workflows/gradle-run-basic@v3.1.1
+        with:
+          gradle-task: "integrationTest"
+          aws-sts-role: ${{ vars.MGMT_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.MGMT_REGION }}

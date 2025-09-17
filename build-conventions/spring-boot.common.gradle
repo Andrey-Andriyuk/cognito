@@ -1,0 +1,6 @@
+bootJar {
+  archiveClassifier.set('boot')
+  layered {
+    enabled = true
+  }
+}

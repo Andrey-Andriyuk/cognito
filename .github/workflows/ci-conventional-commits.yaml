@@ -1,0 +1,19 @@
+name: "CI: Conventional Commits"
+
+concurrency:
+  group: ci-conventional-commits-${{ github.event.pull_request.id }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+
+permissions:
+  contents: read
+
+jobs:
+
+  check_pr_title:
+    uses: vegainvestments/gha-workflows/.github/workflows/reusable-sr-commitlint-string.yaml@v3.0.0
+    with:
+      input_str: ${{ github.event.pull_request.title }}

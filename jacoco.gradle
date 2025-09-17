@@ -1,0 +1,125 @@
+import groovy.json.JsonSlurper
+
+ext.jacocoExcludedPatterns = [
+  '**/model/generated/**',
+  '**/model/jooq/**',
+  '**/build/generated/**',
+  '**/generated-jooq/**',
+  '**/generated-avro/**',
+  '**/generated/**',
+  '**/investments/vega/*/model/**',
+  '**/investments/vega/*/contract/**',
+  '**/investments/vega/*/config/**',
+  // Exclude the rest controllers no point testing spring implementation
+  '**/investments/vega/retoolfacade/api/**'
+]
+
+subprojects {
+  apply plugin: 'jacoco'
+
+  jacoco {
+    toolVersion = '0.8.11'
+  }
+
+  tasks.withType(JacocoReport).configureEach {
+    reports {
+      xml.required.set(true)
+      csv.required.set(true)
+      html.required.set(true)
+    }
+
+    classDirectories.setFrom(
+        files(classDirectories.files.collect { dir ->
+          fileTree(dir: dir, exclude: jacocoExcludedPatterns)
+        })
+        )
+  }
+}
+
+tasks.register('jacocoTestReportAggregate', JacocoReport) {
+  group = 'Verification'
+  description = 'Generates aggregated JaCoCo coverage report for unit tests.'
+
+  dependsOn subprojects.collect { p ->
+    p.tasks.findByName('jacocoTestReport')
+  }.findAll { it != null }
+
+  classDirectories.setFrom(
+      files(subprojects.collect { project ->
+        if (project.hasProperty('sourceSets') && project.sourceSets.findByName('main')) {
+          project.sourceSets.main.output.classesDirs.files.collect { dir ->
+            fileTree(dir: dir, exclude: jacocoExcludedPatterns)
+          }
+        }
+      })
+      )
+
+  executionData.setFrom(
+      subprojects.collectMany { project ->
+        project.tasks.withType(Test).collect {
+          it.extensions.jacoco.destinationFile
+        }
+      }
+      )
+
+  sourceDirectories.setFrom(
+      files(subprojects.collect { project ->
+        if (project.hasProperty('sourceSets') && project.sourceSets.findByName('main')) {
+          project.sourceSets.main.allJava.srcDirs
+        }
+      })
+      )
+
+  reports {
+    xml.required.set(true)
+    csv.required.set(true)
+    html.required.set(true)
+  }
+}
+
+tasks.register('jacocoIntegrationTestReportAggregate', JacocoReport) {
+  group = 'Verification'
+  description = 'Generates aggregated JaCoCo coverage report for integration tests.'
+
+  def projectsWithIntegrationTests = subprojects.findAll { p ->
+    p.tasks.findByName('jacocoIntegrationTestReport') != null
+  }
+
+  dependsOn projectsWithIntegrationTests.collect { p ->
+    p.tasks.findByName('jacocoIntegrationTestReport')
+  }
+
+  classDirectories.setFrom(
+      files(projectsWithIntegrationTests.collect { project ->
+        project.sourceSets.main.output.classesDirs.files.collect { dir ->
+          fileTree(dir: dir, exclude: jacocoExcludedPatterns)
+        }
+      })
+      )
+
+  executionData.setFrom(
+      projectsWithIntegrationTests.collectMany { project ->
+        def integrationTestTask = project.tasks.findByName('integrationTest')
+        if (integrationTestTask != null) {
+          [
+            integrationTestTask.extensions.jacoco.destinationFile
+          ]
+        } else {
+          []
+        }
+      }
+      )
+
+  sourceDirectories.setFrom(
+      files(projectsWithIntegrationTests.collect { project ->
+        project.sourceSets.main.allJava.srcDirs
+      })
+      )
+
+  reports {
+    xml.required.set(true)
+    csv.required.set(true)
+    html.required.set(true)
+  }
+}
+

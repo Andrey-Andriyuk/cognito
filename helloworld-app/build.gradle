@@ -1,0 +1,50 @@
+plugins {
+  id 'org.springframework.boot'
+  id 'java'
+}
+
+apply from: "${rootDir}/build-conventions/java.common.gradle"
+apply from: "${rootDir}/build-conventions/spring-boot.common.gradle"
+
+configurations {
+  integrationTestImplementation.extendsFrom implementation
+}
+
+springBoot {
+  mainClass = 'investments.vega.helloworld.HelloworldApplication'
+}
+
+dependencies {
+  implementation "org.springframework.boot:spring-boot-starter"
+  implementation "org.springframework.boot:spring-boot-starter-web"
+  implementation "org.springframework.boot:spring-boot-starter-actuator"
+  implementation "investments.vega.common:config:${appJavaCommonVersion}"
+
+  testImplementation "org.springframework.boot:spring-boot-starter-test"
+}
+
+sourceSets {
+  integrationTest {
+    java.srcDir('src/integrationTest/java')
+    resources.srcDir('src/integrationTest/resources')
+    compileClasspath += sourceSets.main.output + sourceSets.test.output
+    runtimeClasspath += sourceSets.main.output + sourceSets.test.output
+  }
+}
+
+tasks.processIntegrationTestResources {
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+task integrationTest(type: Test) {
+  useJUnitPlatform()
+  enabled = true
+  description = 'Runs the integration tests.'
+  group = 'verification'
+  testClassesDirs = sourceSets.integrationTest.output.classesDirs
+  classpath = sourceSets.integrationTest.runtimeClasspath
+
+  testLogging {
+    exceptionFormat "full"
+  }
+}

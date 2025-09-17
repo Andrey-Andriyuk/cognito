@@ -1,0 +1,22 @@
+name: "Ops: Publish Snapshot Artifacts"
+
+concurrency:
+  group: ops-publish-snapshots-${{ github.ref_name }}
+  cancel-in-progress: false
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+
+  publish_snapshots:
+    uses: ./.github/workflows/reusable-publish.yaml
+    with:
+      jar_version: "CURRENT-SNAPSHOT"
+      image_tag: "latest"

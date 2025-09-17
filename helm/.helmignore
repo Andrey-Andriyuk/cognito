@@ -1,0 +1,22 @@
+# OS / system files
+.DS_Store
+Thumbs.db
+
+# Editor / backup files
+*.swp
+*.bak
+*.tmp
+*.orig
+*~
+
+# IDE project files
+.project
+.idea/
+*.tmproj
+.vscode/
+
+# Git config
+.gitignore
+
+# Helm lock file (can be regenerated)
+Chart.lock

@@ -1,0 +1,43 @@
+name: "Reusable: Publish Artifacts"
+on:
+  workflow_call:
+    inputs:
+      semver_version:
+        type: string
+        description: Semantic version (must be SemVer-compliant, e.g. 1.2.3). If provided, a Helm chart will be published.
+        required: false
+      jar_version:
+        type: string
+        description: Maven JAR version (can be SemVer or Maven-compliant, e.g. 1.2.3 or 1.2.3-SNAPSHOT). If provided, JARs will be published.
+        required: false
+      image_tag:
+        type: string
+        description: Docker image tag (can be SemVer or Docker-compliant, e.g. 1.2.3 or latest). If provided, a Docker image will be published and the tag will be used in the Helm chart.
+        required: false
+permissions:
+  contents: read
+jobs:
+  java_jars:
+    if: ${{ inputs.jar_version }}
+    uses: vegainvestments/gha-workflows/.github/workflows/reusable-publish-java-jars.yaml@v3.5.0
+    with:
+      jar_version: "${{ inputs.jar_version }}"
+  docker_image:
+    if: ${{ inputs.image_tag }}
+    uses: vegainvestments/gha-workflows/.github/workflows/reusable-publish-docker-image-with-jar.yaml@v3.5.0
+    with:
+      jar_version: "${{ inputs.jar_version }}"
+      image_tag: "${{ inputs.image_tag }}"
+      ecr_repository_name: "helloworld-app"
+      docker_context: "./helloworld-app"
+  helm_chart:
+    if: ${{ inputs.semver_version }}
+    needs: docker_image
+    uses: vegainvestments/gha-workflows/.github/workflows/reusable-publish-helm-chart.yaml@v3.0.0
+    with:
+      semver_version: "${{ inputs.semver_version }}"
+      helm_chart_name: "helloworld"
+      helm_chart_dir: "./helm"
+      update_image_repository: true
+      update_image_tag: true
+      image_tag: "${{ inputs.image_tag }}"
